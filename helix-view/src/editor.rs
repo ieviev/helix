@@ -1744,7 +1744,7 @@ impl Editor {
         }
 
         if !matches!(action, Action::Load) {
-            self.enter_normal_mode();
+            // self.enter_normal_mode();
         }
 
         let focust_lost = match action {

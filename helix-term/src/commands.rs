@@ -3004,7 +3004,7 @@ fn ensure_selections_forward(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn enter_insert_mode(cx: &mut Context) {
+pub fn enter_insert_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Insert;
 }
 

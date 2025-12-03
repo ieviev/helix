@@ -138,6 +138,7 @@ impl Application {
             })),
             handlers,
         );
+        
         Self::load_configured_theme(
             &mut editor,
             &config.load(),
