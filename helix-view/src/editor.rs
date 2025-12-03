@@ -1328,7 +1328,7 @@ impl Editor {
         area.height -= 1;
 
         Self {
-            mode: Mode::Normal,
+            mode: Mode::Insert,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
