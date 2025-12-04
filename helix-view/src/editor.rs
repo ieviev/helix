@@ -2077,7 +2077,7 @@ impl Editor {
         }
 
         // Reset mode to normal and ensure any pending changes are committed in the old document.
-        self.enter_normal_mode();
+        // self.enter_normal_mode();
         let (view, doc) = current!(self);
         doc.append_changes_to_history(view);
         self.ensure_cursor_in_view(view_id);
@@ -2327,26 +2327,26 @@ impl Editor {
             return;
         }
 
-        self.mode = Mode::Normal;
-        let (view, doc) = current!(self);
+        // self.mode = Mode::Normal;
+        // let (view, doc) = current!(self);
 
-        try_restore_indent(doc, view);
+        // try_restore_indent(doc, view);
 
-        // if leaving append mode, move cursor back by 1
-        if doc.restore_cursor {
-            let text = doc.text().slice(..);
-            let selection = doc.selection(view.id).clone().transform(|range| {
-                let mut head = range.to();
-                if range.head > range.anchor {
-                    head = graphemes::prev_grapheme_boundary(text, head);
-                }
+        // // if leaving append mode, move cursor back by 1
+        // if doc.restore_cursor {
+        //     let text = doc.text().slice(..);
+        //     let selection = doc.selection(view.id).clone().transform(|range| {
+        //         let mut head = range.to();
+        //         if range.head > range.anchor {
+        //             head = graphemes::prev_grapheme_boundary(text, head);
+        //         }
 
-                Range::new(range.from(), head)
-            });
+        //         Range::new(range.from(), head)
+        //     });
 
-            doc.set_selection(view.id, selection);
-            doc.restore_cursor = false;
-        }
+        //     doc.set_selection(view.id, selection);
+        //     doc.restore_cursor = false;
+        // }
     }
 
     pub fn current_stack_frame(&self) -> Option<&dap::StackFrame> {
