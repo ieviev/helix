@@ -1,7 +1,5 @@
 use crate::{
-    commands::Open,
-    compositor::{Callback, Component, Context, Event, EventResult},
-    ctrl, key,
+    alt, commands::Open, compositor::{Callback, Component, Context, Event, EventResult}, ctrl, key
 };
 use tui::{
     buffer::Buffer as Surface,

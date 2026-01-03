@@ -598,6 +598,44 @@ impl Prompt {
     }
 }
 
+fn search_next_or_prev_impl(
+    cx: &mut Context,
+    movement: helix_core::movement::Movement,
+    direction: helix_core::movement::Direction,
+    query: &str,
+) {
+    let config = cx.editor.config();
+    let scrolloff = config.scrolloff;
+    let search_config = &config.search;
+    let case_insensitive = if search_config.smart_case {
+        !query.chars().any(char::is_uppercase)
+    } else {
+        false
+    };
+    let wrap_around = search_config.wrap_around;
+    if let Ok(regex) = helix_stdx::rope::RegexBuilder::new()
+        .syntax(
+            helix_stdx::rope::Config::new()
+                .case_insensitive(case_insensitive)
+                .multi_line(true),
+        )
+        .build(&query)
+    {
+        crate::commands::search_impl(
+            cx.editor,
+            &regex,
+            movement,
+            direction,
+            scrolloff,
+            wrap_around,
+            true,
+        );
+    } else {
+        let error = format!("Invalid regex: {}", query);
+        cx.editor.set_error(error);
+    }
+}
+
 impl Component for Prompt {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event = match event {
@@ -617,6 +655,28 @@ impl Component for Prompt {
         })));
 
         match event {
+            // rebind search_next / search_prev so it's usable
+            key!(Up) if self.prompt == "search:" => {
+                search_next_or_prev_impl(
+                    cx,
+                    helix_core::movement::Movement::Move,
+                    helix_core::movement::Direction::Backward,
+                    &self.line,
+                );
+                return EventResult::Consumed(None);
+            }
+            key!(Down) if self.prompt == "search:" => {
+                search_next_or_prev_impl(
+                    cx,
+                    helix_core::movement::Movement::Move,
+                    helix_core::movement::Direction::Forward,
+                    &self.line,
+                );
+                return EventResult::Consumed(None);
+            }
+            key!(Enter) if self.prompt == "search:" => {
+                return close_fn;
+            }
             ctrl!('c') | key!(Esc) => {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
                 return close_fn;

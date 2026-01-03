@@ -2143,7 +2143,7 @@ fn merge_consecutive_selections(cx: &mut Context) {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn search_impl(
+pub(crate) fn search_impl(
     editor: &mut Editor,
     regex: &rope::Regex,
     movement: Movement,
@@ -3002,7 +3002,7 @@ fn ensure_selections_forward(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn enter_insert_mode(cx: &mut Context) {
+pub fn enter_insert_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Insert;
 }
 
@@ -3955,7 +3955,7 @@ fn select_mode(cx: &mut Context) {
 
 fn exit_select_mode(cx: &mut Context) {
     if cx.editor.mode == Mode::Select {
-        cx.editor.mode = Mode::Normal;
+        cx.editor.mode = Mode::Insert;
     }
 }
 

@@ -41,8 +41,7 @@ use std::{
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
-    char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
-    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
+    Position, char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction, text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation
 };
 use helix_view::{
     editor::Action,
@@ -1035,6 +1034,8 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         }
     }
 
+    
+
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
         // TODO: keybinds for scrolling preview
 
@@ -1044,6 +1045,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             Event::Resize(..) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
+
 
         let close_fn = |picker: &mut Self| {
             // if the picker is very large don't store it as last_picker to avoid
