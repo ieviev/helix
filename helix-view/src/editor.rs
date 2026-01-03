@@ -2357,6 +2357,7 @@ impl Editor {
     }
 }
 
+#[allow(unused)]
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
     use helix_core::{
         chars::char_is_whitespace,
