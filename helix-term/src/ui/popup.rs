@@ -1,7 +1,5 @@
 use crate::{
-    commands::Open,
-    compositor::{Callback, Component, Context, Event, EventResult},
-    ctrl, key,
+    alt, commands::Open, compositor::{Callback, Component, Context, Event, EventResult}, ctrl, key
 };
 use tui::{
     buffer::Buffer as Surface,
@@ -276,11 +274,11 @@ impl<T: Component> Component for Popup<T> {
                 let _ = self.contents.handle_event(event, cx);
                 EventResult::Consumed(Some(close_fn))
             }
-            ctrl!('d') => {
+            alt!(Down) => {
                 self.scroll_half_page_down();
                 EventResult::Consumed(None)
             }
-            ctrl!('u') => {
+            alt!(Up) => {
                 self.scroll_half_page_up();
                 EventResult::Consumed(None)
             }
