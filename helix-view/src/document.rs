@@ -802,7 +802,9 @@ impl Document {
         encoding = encoding.or(editor_config.encoding);
 
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
-        let is_zst = path.extension().is_some_and(|e| e == "zst");
+        let is_zst = path
+            .extension()
+            .is_some_and(|e| e == "zst" || e == "zstd");
         let file_size = path.metadata().ok().map(|m| m.len()).unwrap_or(0);
         let truncated = is_zst || file_size > LARGE_FILE_THRESHOLD;
         let (rope, encoding, has_bom) = if path.exists() {
