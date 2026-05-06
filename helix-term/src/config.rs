@@ -123,15 +123,7 @@ impl Config {
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
             .map_err(ConfigLoadError::Error);
 
-        let phony_config = ConfigLoadError::Error(IOError::other("hacky placeholder"));
-        let global_parsed = Config::load(Ok(&global_config), Err(phony_config))?;
-        if let helix_loader::workspace_trust::TrustStatus::Trusted =
-            helix_loader::workspace_trust::quick_query_workspace(global_parsed.editor.insecure)
-        {
-            Config::load(Ok(&global_config), local_config)
-        } else {
-            Ok(global_parsed)
-        }
+        Config::load(Ok(&global_config), local_config)
     }
 }
 
