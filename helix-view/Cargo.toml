@@ -38,6 +38,7 @@ arc-swap.workspace = true
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
 tokio-stream = "0.1"
+ruzstd = "0.8"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 
 slotmap.workspace = true

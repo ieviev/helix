@@ -1937,17 +1937,27 @@ impl Editor {
                 self.syn_loader.clone(),
             )?;
 
+            let truncated = doc.truncated;
             let diagnostics =
                 Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, &doc);
             doc.replace_diagnostics(diagnostics, &[], None);
 
-            if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
-                doc.set_diff_base(diff_base);
+            if !truncated {
+                if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
+                    doc.set_diff_base(diff_base);
+                }
+                doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
             }
-            doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
-            self.launch_language_servers(id);
+            if !truncated {
+                self.launch_language_servers(id);
+            } else {
+                self.set_status(format!(
+                    "Opened in peek mode (read-only, truncated to {} MiB)",
+                    crate::document::LARGE_FILE_THRESHOLD / (1024 * 1024)
+                ));
+            }
 
             helix_event::dispatch(DocumentDidOpen {
                 editor: self,

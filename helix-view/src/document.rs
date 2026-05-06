@@ -60,6 +60,7 @@ const DEFAULT_TAB_WIDTH: usize = 4;
 pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
+pub const LARGE_FILE_THRESHOLD: u64 = 50 * 1024 * 1024;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
@@ -206,6 +207,7 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+    pub truncated: bool,
 
     pub previous_diagnostic_ids: HashMap<LanguageServerId, String>,
 
@@ -754,6 +756,7 @@ impl Document {
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
+            truncated: false,
             jump_labels: HashMap::new(),
             document_highlights: HashMap::new(),
             color_swatches: None,
@@ -799,9 +802,22 @@ impl Document {
         encoding = encoding.or(editor_config.encoding);
 
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
+        let is_zst = path.extension().is_some_and(|e| e == "zst");
+        let file_size = path.metadata().ok().map(|m| m.len()).unwrap_or(0);
+        let truncated = is_zst || file_size > LARGE_FILE_THRESHOLD;
         let (rope, encoding, has_bom) = if path.exists() {
             let mut file = std::fs::File::open(path)?;
-            from_reader(&mut file, encoding)?
+            if is_zst {
+                let dec = ruzstd::decoding::StreamingDecoder::new(file)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
+                let mut limited = std::io::Read::take(dec, LARGE_FILE_THRESHOLD);
+                from_reader(&mut limited, encoding)?
+            } else if truncated {
+                let mut limited = std::io::Read::take(&mut file, LARGE_FILE_THRESHOLD);
+                from_reader(&mut limited, encoding)?
+            } else {
+                from_reader(&mut file, encoding)?
+            }
         } else {
             let line_ending = editor_config
                 .line_ending
@@ -815,7 +831,11 @@ impl Document {
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
-        if detect_language {
+        doc.truncated = truncated;
+        if truncated {
+            doc.readonly = true;
+        }
+        if detect_language && !truncated {
             doc.detect_language(&loader);
         }
 
