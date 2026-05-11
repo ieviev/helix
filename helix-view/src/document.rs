@@ -454,9 +454,24 @@ fn apply_bom(encoding: &'static encoding::Encoding, buf: &mut [u8; BUF_SIZE]) ->
 // The documentation and implementation of this function should be up-to-date with
 // its sibling function, `to_writer()`.
 //
-/// Decodes a stream of bytes into UTF-8, returning a `Rope` and the
-/// encoding it was decoded as with BOM information. The optional `encoding`
-/// parameter can be used to override encoding auto-detection.
+fn skip_zst_skippable_frames(source: &mut std::fs::File) -> Result<(), std::io::Error> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut buf = [0u8; 4];
+    loop {
+        source.read_exact(&mut buf)?;
+        let magic = u32::from_le_bytes(buf);
+        if (0x184D2A50..=0x184D2A5F).contains(&magic) {
+            source.read_exact(&mut buf)?;
+            let length = u32::from_le_bytes(buf) as i64;
+            source.seek(SeekFrom::Current(length))?;
+        } else {
+            source.seek(SeekFrom::Current(-4))?;
+            break;
+        }
+    }
+    Ok(())
+}
+
 pub fn from_reader<R: std::io::Read + ?Sized>(
     reader: &mut R,
     encoding: Option<&'static Encoding>,
@@ -810,6 +825,7 @@ impl Document {
         let (rope, encoding, has_bom) = if path.exists() {
             let mut file = std::fs::File::open(path)?;
             if is_zst {
+                skip_zst_skippable_frames(&mut file)?;
                 let dec = ruzstd::decoding::StreamingDecoder::new(file)
                     .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
                 let mut limited = std::io::Read::take(dec, LARGE_FILE_THRESHOLD);
