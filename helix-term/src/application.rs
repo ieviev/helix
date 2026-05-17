@@ -143,7 +143,10 @@ impl Application {
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+        let lang_keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
+            &config.language_keys
+        }));
+        let editor_view = Box::new(ui::EditorView::new(Keymaps::with_languages(keys, lang_keys)));
         compositor.push(editor_view);
 
         let jobs = Jobs::new();

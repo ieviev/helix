@@ -933,7 +933,8 @@ impl EditorView {
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
-        let key_result = self.keymaps.get(mode, event);
+        let language = doc!(cxt.editor).language_name().map(String::from);
+        let key_result = self.keymaps.get(mode, language.as_deref(), event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
         let mut execute_command = |command: &commands::MappableCommand| {
@@ -991,8 +992,9 @@ impl EditorView {
                         match ev.char() {
                             Some(ch) => commands::insert::insert_char(cx, ch),
                             None => {
+                                let language = doc!(cx.editor).language_name().map(String::from);
                                 if let KeymapResult::Matched(command) =
-                                    self.keymaps.get(Mode::Insert, ev)
+                                    self.keymaps.get(Mode::Insert, language.as_deref(), ev)
                                 {
                                     command.execute(cx);
                                 }
@@ -1017,7 +1019,7 @@ impl EditorView {
                 cxt.editor.count = NonZeroUsize::new(count);
             }
             // A non-zero digit will start the count if that number isn't used by a keymap.
-            (key!(i @ '1'..='9'), None) if !self.keymaps.contains_key(mode, event) => {
+            (key!(i @ '1'..='9'), None) if !self.keymaps.contains_key(mode, doc!(cxt.editor).language_name(), event) => {
                 let i = i.to_digit(10).unwrap() as usize;
                 cxt.editor.count = NonZeroUsize::new(i);
             }

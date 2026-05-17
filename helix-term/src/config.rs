@@ -1,5 +1,5 @@
 use crate::keymap;
-use crate::keymap::{merge_keys, KeyTrie};
+use crate::keymap::{merge_keys, KeyTrie, LanguageKeymaps};
 use helix_loader::merge_toml_values;
 use helix_view::{document::Mode, theme};
 use serde::Deserialize;
@@ -13,6 +13,7 @@ use toml::de::Error as TomlError;
 pub struct Config {
     pub theme: Option<theme::Config>,
     pub keys: HashMap<Mode, KeyTrie>,
+    pub language_keys: LanguageKeymaps,
     pub editor: helix_view::editor::Config,
 }
 
@@ -21,6 +22,8 @@ pub struct Config {
 pub struct ConfigRaw {
     pub theme: Option<theme::Config>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
+    #[serde(rename = "language-keys")]
+    pub language_keys: Option<LanguageKeymaps>,
     pub editor: Option<toml::Value>,
 }
 
@@ -29,6 +32,7 @@ impl Default for Config {
         Config {
             theme: None,
             keys: keymap::default(),
+            language_keys: LanguageKeymaps::new(),
             editor: helix_view::editor::Config::default(),
         }
     }
@@ -55,6 +59,20 @@ impl Display for ConfigLoadError {
     }
 }
 
+fn build_language_keys(
+    base: &HashMap<Mode, KeyTrie>,
+    layers: [Option<LanguageKeymaps>; 2],
+) -> LanguageKeymaps {
+    let mut out: LanguageKeymaps = HashMap::new();
+    for layer in layers.into_iter().flatten() {
+        for (lang, overrides) in layer {
+            let entry = out.entry(lang).or_insert_with(|| base.clone());
+            merge_keys(entry, overrides);
+        }
+    }
+    out
+}
+
 impl Config {
     pub fn load(
         global: Result<&String, ConfigLoadError>,
@@ -73,6 +91,10 @@ impl Config {
                 if let Some(local_keys) = local.keys {
                     merge_keys(&mut keys, local_keys)
                 }
+                let language_keys = build_language_keys(
+                    &keys,
+                    [global.language_keys, local.language_keys],
+                );
 
                 let editor = match (global.editor, local.editor) {
                     (None, None) => helix_view::editor::Config::default(),
@@ -87,6 +109,7 @@ impl Config {
                 Config {
                     theme: local.theme.or(global.theme),
                     keys,
+                    language_keys,
                     editor,
                 }
             }
@@ -100,9 +123,11 @@ impl Config {
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
+                let language_keys = build_language_keys(&keys, [config.language_keys, None]);
                 Config {
                     theme: config.theme,
                     keys,
+                    language_keys,
                     editor: config.editor.map_or_else(
                         || Ok(helix_view::editor::Config::default()),
                         |val| val.try_into().map_err(ConfigLoadError::BadConfig),

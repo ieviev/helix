@@ -261,8 +261,11 @@ pub enum KeymapResult {
 /// A map of command names to keybinds that will execute the command.
 pub type ReverseKeymap = HashMap<String, Vec<Vec<KeyEvent>>>;
 
+pub type LanguageKeymaps = HashMap<String, HashMap<Mode, KeyTrie>>;
+
 pub struct Keymaps {
     pub map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
+    pub lang_map: Box<dyn DynAccess<LanguageKeymaps>>,
     /// Stores pending keys waiting for the next key. This is relative to a
     /// sticky node if one is in use.
     state: Vec<KeyEvent>,
@@ -272,8 +275,19 @@ pub struct Keymaps {
 
 impl Keymaps {
     pub fn new(map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>) -> Self {
+        Self::with_languages(
+            map,
+            Box::new(ArcSwap::new(Arc::new(LanguageKeymaps::new()))),
+        )
+    }
+
+    pub fn with_languages(
+        map: Box<dyn DynAccess<HashMap<Mode, KeyTrie>>>,
+        lang_map: Box<dyn DynAccess<LanguageKeymaps>>,
+    ) -> Self {
         Self {
             map,
+            lang_map,
             state: Vec::new(),
             sticky: None,
         }
@@ -281,6 +295,10 @@ impl Keymaps {
 
     pub fn map(&self) -> DynGuard<HashMap<Mode, KeyTrie>> {
         self.map.load()
+    }
+
+    pub fn lang_map(&self) -> DynGuard<LanguageKeymaps> {
+        self.lang_map.load()
     }
 
     /// Returns list of keys waiting to be disambiguated in current mode.
@@ -292,9 +310,11 @@ impl Keymaps {
         self.sticky.as_ref()
     }
 
-    pub fn contains_key(&self, mode: Mode, key: KeyEvent) -> bool {
-        let keymaps = &*self.map();
-        let keymap = &keymaps[&mode];
+    pub fn contains_key(&self, mode: Mode, language: Option<&str>, key: KeyEvent) -> bool {
+        let lang_map = self.lang_map();
+        let lang_keymap = language.and_then(|l| lang_map.get(l)).and_then(|m| m.get(&mode));
+        let keymaps = self.map();
+        let keymap = lang_keymap.unwrap_or(&keymaps[&mode]);
         keymap
             .search(self.pending())
             .and_then(KeyTrie::node)
@@ -304,10 +324,12 @@ impl Keymaps {
     /// Lookup `key` in the keymap to try and find a command to execute. Escape
     /// key cancels pending keystrokes. If there are no pending keystrokes but a
     /// sticky node is in use, it will be cleared.
-    pub fn get(&mut self, mode: Mode, key: KeyEvent) -> KeymapResult {
+    pub fn get(&mut self, mode: Mode, language: Option<&str>, key: KeyEvent) -> KeymapResult {
         // TODO: remove the sticky part and look up manually
-        let keymaps = &*self.map();
-        let keymap = &keymaps[&mode];
+        let lang_map = self.lang_map();
+        let lang_keymap = language.and_then(|l| lang_map.get(l)).and_then(|m| m.get(&mode));
+        let keymaps = self.map();
+        let keymap = lang_keymap.unwrap_or(&keymaps[&mode]);
 
         if key!(Esc) == key {
             if !self.state.is_empty() {
@@ -417,18 +439,18 @@ mod tests {
 
         let mut keymap = Keymaps::new(Box::new(Constant(merged_keyamp.clone())));
         assert_eq!(
-            keymap.get(Mode::Normal, key!('i')),
+            keymap.get(Mode::Normal, None, key!('i')),
             KeymapResult::Matched(MappableCommand::normal_mode),
             "Leaf should replace leaf"
         );
         assert_eq!(
-            keymap.get(Mode::Normal, key!('无')),
+            keymap.get(Mode::Normal, None, key!('无')),
             KeymapResult::Matched(MappableCommand::insert_mode),
             "New leaf should be present in merged keymap"
         );
         // Assumes that z is a node in the default keymap
         assert_eq!(
-            keymap.get(Mode::Normal, key!('z')),
+            keymap.get(Mode::Normal, None, key!('z')),
             KeymapResult::Matched(MappableCommand::jump_backward),
             "Leaf should replace node"
         );
